@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import '../../data/local/app_database.dart';
 import '../../data/local/daos/infrastructure_dao.dart';
 import '../providers/infrastructure_providers.dart';
 
 class AddPointBottomSheet extends ConsumerStatefulWidget {
-  final double latitude;
-  final double longitude;
-
-  const AddPointBottomSheet({
-    super.key,
-    required this.latitude,
-    required this.longitude,
-  });
+  const AddPointBottomSheet({super.key});
 
   @override
   ConsumerState<AddPointBottomSheet> createState() =>
@@ -29,7 +21,7 @@ class _AddPointBottomSheetState extends ConsumerState<AddPointBottomSheet> {
 
   String _selectedType = 'Poste';
   String _selectedStatus = 'Nuevo';
-  String _selectedColor = '#FFFFFF';
+  String _selectedColor = '#0000FF';
   bool _electricalRisk = false;
 
   final Map<String, int> _selectedComplements = {};
@@ -183,7 +175,6 @@ class _AddPointBottomSheetState extends ConsumerState<AddPointBottomSheet> {
           ),
           items:
               [
-                    {'name': 'Blanco', 'hex': '#FFFFFF'},
                     {'name': 'Gris', 'hex': '#808080'},
                     {'name': 'Negro', 'hex': '#000000'},
                     {'name': 'Rojo', 'hex': '#FF0000'},
@@ -425,47 +416,23 @@ class _AddPointBottomSheetState extends ConsumerState<AddPointBottomSheet> {
   Future<void> _savePoint() async {
     if (!_formKey.currentState!.validate()) return;
 
-    try {
-      final metadata = jsonEncode({
-        'status': _selectedStatus,
-        'color': _selectedColor,
-        'electrical_risk': _electricalRisk,
-        'field_notes': _fieldNotesController.text,
-      });
+    final metadata = jsonEncode({
+      'status': _selectedStatus,
+      'color': _selectedColor,
+      'electrical_risk': _electricalRisk,
+      'field_notes': _fieldNotesController.text,
+    });
 
-      final pointId = const Uuid().v4();
+    final pointDataMap = <String, dynamic>{
+      'name': _nameController.text,
+      'type': _selectedType,
+      'description': _descriptionController.text,
+      'metadata': metadata,
+      'complementsWithQuantity': _selectedComplements,
+    };
 
-      await ref
-          .read(infrastructureMapDataProvider.notifier)
-          .addPoint(
-            pointId: pointId,
-            name: _nameController.text,
-            type: _selectedType,
-            description: _descriptionController.text,
-            latitude: widget.latitude,
-            longitude: widget.longitude,
-            metadata: metadata,
-            complementsWithQuantity: _selectedComplements,
-          );
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Punto guardado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (mounted) {
+      Navigator.pop(context, pointDataMap);
     }
   }
 }

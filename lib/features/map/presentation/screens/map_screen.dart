@@ -14,7 +14,9 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   MapLibreMapController? _mapController;
   bool _isSourceAdded = false;
-  bool _isStyleLoaded = false; // Bandera de seguridad arquitectónica
+  bool _isStyleLoaded = false;
+  bool _isSelectingLocation = false;
+  Map<String, dynamic>? _pendingPointData;
 
   @override
   Widget build(BuildContext context) {
@@ -63,14 +65,71 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.cyan),
                 ),
               ),
+            if (_isSelectingLocation)
+              IgnorePointer(
+                child: Center(
+                  child: Icon(
+                    Icons.location_searching,
+                    size: 48,
+                    color: Colors.red.shade700,
+                    shadows: const [Shadow(blurRadius: 4, color: Colors.white)],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddMenu,
-        backgroundColor: Colors.cyan,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: !_isSelectingLocation
+          ? FloatingActionButton(
+              onPressed: _showAddMenu,
+              backgroundColor: Colors.cyan,
+              child: const Icon(Icons.add),
+            )
+          : null,
+      bottomNavigationBar: _isSelectingLocation
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _cancelLocationSelection,
+                      icon: const Icon(Icons.close),
+                      label: const Text('Cancelar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _confirmLocationSelection,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Confirmar Ubicación'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 
@@ -120,10 +179,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
   }
 
-  void _showAddPointBottomSheet() {
+  Future<void> _showAddPointBottomSheet() async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const AddPointBottomSheet(),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _isSelectingLocation = true;
+        _pendingPointData = result;
+      });
+    }
+  }
+
+  void _cancelLocationSelection() {
+    setState(() {
+      _isSelectingLocation = false;
+      _pendingPointData = null;
+    });
+  }
+
+  Future<void> _confirmLocationSelection() async {
     final controller = _mapController;
-    if (controller == null) {
-      _showError('Mapa no inicializado');
+    final pointData = _pendingPointData;
+
+    if (controller == null || pointData == null) {
+      _showError('Error: datos no disponibles');
       return;
     }
 
@@ -133,23 +217,58 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddPointBottomSheet(
-        latitude: cameraPosition.target.latitude,
-        longitude: cameraPosition.target.longitude,
-      ),
-    );
+    try {
+      final pointId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      await ref
+          .read(infrastructureMapDataProvider.notifier)
+          .addPoint(
+            pointId: pointId,
+            name: pointData['name'] as String,
+            type: pointData['type'] as String,
+            description: pointData['description'] as String,
+            latitude: cameraPosition.target.latitude,
+            longitude: cameraPosition.target.longitude,
+            metadata: pointData['metadata'] as String,
+            complementsWithQuantity:
+                pointData['complementsWithQuantity'] as Map<String, int>,
+          );
+
+      setState(() {
+        _isSelectingLocation = false;
+        _pendingPointData = null;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Punto guardado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _onMapCreated(MapLibreMapController controller) {
     _mapController = controller;
   }
 
-  void _onStyleLoaded() {
+  void _onStyleLoaded() async {
+    // Parche de seguridad para el Race Condition nativo de MapLibre
+    await Future.delayed(const Duration(milliseconds: 250));
+
     _isStyleLoaded = true;
+
     // Si la data ya cargó antes que el mapa, la inyectamos manualmente la primera vez
     final currentData = ref.read(infrastructureMapDataProvider);
     if (currentData is AsyncData<Map<String, dynamic>>) {
@@ -182,21 +301,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ], // Sintaxis moderna
         );
 
-        // Capa de los Postes
-        await controller.addCircleLayer(
+        // Capa de los Postes (renderizado con iconos)
+        await controller.addSymbolLayer(
           'infrastructure-source',
           'points-layer',
-          const CircleLayerProperties(
-            circleRadius: 5.0,
-            circleColor: '#00FFFF',
-            circleStrokeWidth: 1.5,
-            circleStrokeColor: '#000000',
+          const SymbolLayerProperties(
+            iconImage: 'custom-marker',
+            iconSize: 1.5,
+            iconAllowOverlap: true,
           ),
           filter: [
             '==',
             ['geometry-type'],
             'Point',
-          ], // Sintaxis moderna
+          ],
         );
 
         _isSourceAdded = true;
