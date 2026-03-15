@@ -33,6 +33,21 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
+
+      // Seed initial complement data for testing
+      await batch((batch) {
+        batch.insertAll(complements, [
+          ComplementsCompanion.insert(id: 'c-1', name: 'Caja NAT 16 Puertos'),
+          ComplementsCompanion.insert(id: 'c-2', name: 'Caja NAT 8 Puertos'),
+          ComplementsCompanion.insert(id: 'c-3', name: 'Tensor Metálico'),
+          ComplementsCompanion.insert(id: 'c-4', name: 'Ancla de Suspensión'),
+          ComplementsCompanion.insert(
+            id: 'c-5',
+            name: 'Reserva de Fibra (Cruceta)',
+          ),
+          ComplementsCompanion.insert(id: 'c-6', name: 'Manga de Empalme'),
+        ]);
+      });
     },
     onUpgrade: (Migrator m, int from, int to) async {
       // Future migrations will be implemented here

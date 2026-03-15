@@ -45,8 +45,7 @@ class _AddPointBottomSheetState extends ConsumerState<AddPointBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final database = ref.watch(appDatabaseProvider);
-    final dao = InfrastructureDao(database);
+    final dao = ref.watch(infrastructureDaoProvider);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
