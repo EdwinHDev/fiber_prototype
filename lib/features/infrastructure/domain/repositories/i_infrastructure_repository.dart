@@ -6,7 +6,7 @@ abstract class IInfrastructureRepository {
   Future<Map<String, dynamic>> getInfrastructureGeoJson();
 
   /// Adds a new point with its associated complements.
-  /// 
+  ///
   /// Parameters:
   /// - [pointId]: Unique identifier for the point
   /// - [name]: Point name
@@ -15,7 +15,7 @@ abstract class IInfrastructureRepository {
   /// - [latitude]: Geographic latitude
   /// - [longitude]: Geographic longitude
   /// - [metadata]: JSON string with additional metadata
-  /// - [complementIds]: List of complement IDs to associate with the point
+  /// - [complementsWithQuantity]: Map of complement IDs to quantities
   Future<void> addPoint({
     required String pointId,
     required String name,
@@ -24,11 +24,11 @@ abstract class IInfrastructureRepository {
     required double latitude,
     required double longitude,
     required String metadata,
-    required List<String> complementIds,
+    required Map<String, int> complementsWithQuantity,
   });
 
   /// Adds a new line with its ordered route of points.
-  /// 
+  ///
   /// Parameters:
   /// - [lineId]: Unique identifier for the line
   /// - [name]: Line name

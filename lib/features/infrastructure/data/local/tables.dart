@@ -57,6 +57,7 @@ class PointComplements extends Table {
   TextColumn get complementId => text()
       .named('complement_id')
       .references(Complements, #id, onDelete: KeyAction.cascade)();
+  IntColumn get quantity => integer().withDefault(const Constant(1))();
 
   @override
   Set<Column> get primaryKey => {pointId, complementId};

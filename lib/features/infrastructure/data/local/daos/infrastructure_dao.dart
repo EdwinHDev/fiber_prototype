@@ -12,22 +12,23 @@ class InfrastructureDao extends DatabaseAccessor<AppDatabase>
     with _$InfrastructureDaoMixin {
   InfrastructureDao(super.db);
 
-  /// Inserts a point with its associated complements in a transaction.
+  /// Inserts a point with its associated complements and quantities in a transaction.
   Future<void> insertPointWithComplements({
     required PointEntity point,
-    required List<String> complementIds,
+    required Map<String, int> complementsWithQuantity,
   }) async {
     await transaction(() async {
       await into(points).insert(point);
 
-      if (complementIds.isNotEmpty) {
+      if (complementsWithQuantity.isNotEmpty) {
         await batch((batch) {
-          for (final complementId in complementIds) {
+          for (final entry in complementsWithQuantity.entries) {
             batch.insert(
               pointComplements,
               PointComplementEntity(
                 pointId: point.id,
-                complementId: complementId,
+                complementId: entry.key,
+                quantity: entry.value,
               ),
             );
           }
@@ -85,9 +86,19 @@ class InfrastructureDao extends DatabaseAccessor<AppDatabase>
 
     final point = results.first.readTable(points);
     final complementsList = results
-        .map((row) => row.readTableOrNull(complements))
+        .map((row) {
+          final complement = row.readTableOrNull(complements);
+          final pointComplement = row.readTableOrNull(pointComplements);
+          if (complement != null && pointComplement != null) {
+            return ComplementWithQuantity(
+              complement: complement,
+              quantity: pointComplement.quantity,
+            );
+          }
+          return null;
+        })
         .where((c) => c != null)
-        .cast<ComplementEntity>()
+        .cast<ComplementWithQuantity>()
         .toList();
 
     return PointWithComplements(point: point, complements: complementsList);
@@ -179,6 +190,7 @@ class InfrastructureDao extends DatabaseAccessor<AppDatabase>
     for (final row in results) {
       final point = row.readTable(points);
       final complement = row.readTableOrNull(complements);
+      final pointComplement = row.readTableOrNull(pointComplements);
 
       if (!pointsMap.containsKey(point.id)) {
         pointsMap[point.id] = PointWithComplements(
@@ -187,8 +199,13 @@ class InfrastructureDao extends DatabaseAccessor<AppDatabase>
         );
       }
 
-      if (complement != null) {
-        pointsMap[point.id]!.complements.add(complement);
+      if (complement != null && pointComplement != null) {
+        pointsMap[point.id]!.complements.add(
+          ComplementWithQuantity(
+            complement: complement,
+            quantity: pointComplement.quantity,
+          ),
+        );
       }
     }
 

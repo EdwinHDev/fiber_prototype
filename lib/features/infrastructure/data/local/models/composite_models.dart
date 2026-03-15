@@ -1,15 +1,27 @@
 import '../app_database.dart';
 
-/// Composite model for a Point with its associated Complements.
+/// Helper class to hold a complement with its quantity.
+class ComplementWithQuantity {
+  final ComplementEntity complement;
+  final int quantity;
+
+  const ComplementWithQuantity({
+    required this.complement,
+    required this.quantity,
+  });
+
+  @override
+  String toString() =>
+      'ComplementWithQuantity(complement: ${complement.id}, quantity: $quantity)';
+}
+
+/// Composite model for a Point with its associated Complements and quantities.
 /// Used for querying and displaying complete point information.
 class PointWithComplements {
   final PointEntity point;
-  final List<ComplementEntity> complements;
+  final List<ComplementWithQuantity> complements;
 
-  const PointWithComplements({
-    required this.point,
-    required this.complements,
-  });
+  const PointWithComplements({required this.point, required this.complements});
 
   @override
   String toString() =>
@@ -22,10 +34,7 @@ class LineWithRoute {
   final LineEntity line;
   final List<PointEntity> orderedPoints;
 
-  const LineWithRoute({
-    required this.line,
-    required this.orderedPoints,
-  });
+  const LineWithRoute({required this.line, required this.orderedPoints});
 
   @override
   String toString() =>

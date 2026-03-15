@@ -62,7 +62,7 @@ class InfrastructureMapData extends _$InfrastructureMapData {
     required double latitude,
     required double longitude,
     required String metadata,
-    required List<String> complementIds,
+    required Map<String, int> complementsWithQuantity,
   }) async {
     final repository = ref.read(infrastructureRepositoryProvider);
     await repository.addPoint(
@@ -73,7 +73,7 @@ class InfrastructureMapData extends _$InfrastructureMapData {
       latitude: latitude,
       longitude: longitude,
       metadata: metadata,
-      complementIds: complementIds,
+      complementsWithQuantity: complementsWithQuantity,
     );
     await refresh();
   }

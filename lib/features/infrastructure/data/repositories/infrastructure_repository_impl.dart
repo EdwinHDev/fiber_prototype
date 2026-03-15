@@ -47,7 +47,7 @@ class InfrastructureRepositoryImpl implements IInfrastructureRepository {
     required double latitude,
     required double longitude,
     required String metadata,
-    required List<String> complementIds,
+    required Map<String, int> complementsWithQuantity,
   }) async {
     final point = PointEntity(
       id: pointId,
@@ -61,7 +61,7 @@ class InfrastructureRepositoryImpl implements IInfrastructureRepository {
 
     await _dao.insertPointWithComplements(
       point: point,
-      complementIds: complementIds,
+      complementsWithQuantity: complementsWithQuantity,
     );
   }
 

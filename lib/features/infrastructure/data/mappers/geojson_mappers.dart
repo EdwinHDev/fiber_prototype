@@ -41,7 +41,13 @@ extension PointGeoJsonMapper on PointWithComplements {
         'type': point.type,
         'description': point.description,
         'complements': complements
-            .map((c) => {'id': c.id, 'name': c.name})
+            .map(
+              (c) => {
+                'id': c.complement.id,
+                'name': c.complement.name,
+                'quantity': c.quantity,
+              },
+            )
             .toList(),
         ...sanitizedMetadata, // Spread sanitized metadata properties
       },

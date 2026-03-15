@@ -1122,8 +1122,20 @@ class $PointComplementsTable extends PointComplements
       'REFERENCES complements (id) ON DELETE CASCADE',
     ),
   );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
   @override
-  List<GeneratedColumn> get $columns => [pointId, complementId];
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [pointId, complementId, quantity];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1155,6 +1167,12 @@ class $PointComplementsTable extends PointComplements
     } else if (isInserting) {
       context.missing(_complementIdMeta);
     }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    }
     return context;
   }
 
@@ -1172,6 +1190,10 @@ class $PointComplementsTable extends PointComplements
         DriftSqlType.string,
         data['${effectivePrefix}complement_id'],
       )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
     );
   }
 
@@ -1185,15 +1207,18 @@ class PointComplementEntity extends DataClass
     implements Insertable<PointComplementEntity> {
   final String pointId;
   final String complementId;
+  final int quantity;
   const PointComplementEntity({
     required this.pointId,
     required this.complementId,
+    required this.quantity,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['point_id'] = Variable<String>(pointId);
     map['complement_id'] = Variable<String>(complementId);
+    map['quantity'] = Variable<int>(quantity);
     return map;
   }
 
@@ -1201,6 +1226,7 @@ class PointComplementEntity extends DataClass
     return PointComplementsCompanion(
       pointId: Value(pointId),
       complementId: Value(complementId),
+      quantity: Value(quantity),
     );
   }
 
@@ -1212,6 +1238,7 @@ class PointComplementEntity extends DataClass
     return PointComplementEntity(
       pointId: serializer.fromJson<String>(json['pointId']),
       complementId: serializer.fromJson<String>(json['complementId']),
+      quantity: serializer.fromJson<int>(json['quantity']),
     );
   }
   @override
@@ -1220,20 +1247,26 @@ class PointComplementEntity extends DataClass
     return <String, dynamic>{
       'pointId': serializer.toJson<String>(pointId),
       'complementId': serializer.toJson<String>(complementId),
+      'quantity': serializer.toJson<int>(quantity),
     };
   }
 
-  PointComplementEntity copyWith({String? pointId, String? complementId}) =>
-      PointComplementEntity(
-        pointId: pointId ?? this.pointId,
-        complementId: complementId ?? this.complementId,
-      );
+  PointComplementEntity copyWith({
+    String? pointId,
+    String? complementId,
+    int? quantity,
+  }) => PointComplementEntity(
+    pointId: pointId ?? this.pointId,
+    complementId: complementId ?? this.complementId,
+    quantity: quantity ?? this.quantity,
+  );
   PointComplementEntity copyWithCompanion(PointComplementsCompanion data) {
     return PointComplementEntity(
       pointId: data.pointId.present ? data.pointId.value : this.pointId,
       complementId: data.complementId.present
           ? data.complementId.value
           : this.complementId,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
     );
   }
 
@@ -1241,44 +1274,51 @@ class PointComplementEntity extends DataClass
   String toString() {
     return (StringBuffer('PointComplementEntity(')
           ..write('pointId: $pointId, ')
-          ..write('complementId: $complementId')
+          ..write('complementId: $complementId, ')
+          ..write('quantity: $quantity')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(pointId, complementId);
+  int get hashCode => Object.hash(pointId, complementId, quantity);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is PointComplementEntity &&
           other.pointId == this.pointId &&
-          other.complementId == this.complementId);
+          other.complementId == this.complementId &&
+          other.quantity == this.quantity);
 }
 
 class PointComplementsCompanion extends UpdateCompanion<PointComplementEntity> {
   final Value<String> pointId;
   final Value<String> complementId;
+  final Value<int> quantity;
   final Value<int> rowid;
   const PointComplementsCompanion({
     this.pointId = const Value.absent(),
     this.complementId = const Value.absent(),
+    this.quantity = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PointComplementsCompanion.insert({
     required String pointId,
     required String complementId,
+    this.quantity = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : pointId = Value(pointId),
        complementId = Value(complementId);
   static Insertable<PointComplementEntity> custom({
     Expression<String>? pointId,
     Expression<String>? complementId,
+    Expression<int>? quantity,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (pointId != null) 'point_id': pointId,
       if (complementId != null) 'complement_id': complementId,
+      if (quantity != null) 'quantity': quantity,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1286,11 +1326,13 @@ class PointComplementsCompanion extends UpdateCompanion<PointComplementEntity> {
   PointComplementsCompanion copyWith({
     Value<String>? pointId,
     Value<String>? complementId,
+    Value<int>? quantity,
     Value<int>? rowid,
   }) {
     return PointComplementsCompanion(
       pointId: pointId ?? this.pointId,
       complementId: complementId ?? this.complementId,
+      quantity: quantity ?? this.quantity,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1304,6 +1346,9 @@ class PointComplementsCompanion extends UpdateCompanion<PointComplementEntity> {
     if (complementId.present) {
       map['complement_id'] = Variable<String>(complementId.value);
     }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1315,6 +1360,7 @@ class PointComplementsCompanion extends UpdateCompanion<PointComplementEntity> {
     return (StringBuffer('PointComplementsCompanion(')
           ..write('pointId: $pointId, ')
           ..write('complementId: $complementId, ')
+          ..write('quantity: $quantity, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2642,12 +2688,14 @@ typedef $$PointComplementsTableCreateCompanionBuilder =
     PointComplementsCompanion Function({
       required String pointId,
       required String complementId,
+      Value<int> quantity,
       Value<int> rowid,
     });
 typedef $$PointComplementsTableUpdateCompanionBuilder =
     PointComplementsCompanion Function({
       Value<String> pointId,
       Value<String> complementId,
+      Value<int> quantity,
       Value<int> rowid,
     });
 
@@ -2714,6 +2762,11 @@ class $$PointComplementsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$PointsTableFilterComposer get pointId {
     final $$PointsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -2770,6 +2823,11 @@ class $$PointComplementsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$PointsTableOrderingComposer get pointId {
     final $$PointsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2826,6 +2884,9 @@ class $$PointComplementsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
   $$PointsTableAnnotationComposer get pointId {
     final $$PointsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -2905,20 +2966,24 @@ class $$PointComplementsTableTableManager
               ({
                 Value<String> pointId = const Value.absent(),
                 Value<String> complementId = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PointComplementsCompanion(
                 pointId: pointId,
                 complementId: complementId,
+                quantity: quantity,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String pointId,
                 required String complementId,
+                Value<int> quantity = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PointComplementsCompanion.insert(
                 pointId: pointId,
                 complementId: complementId,
+                quantity: quantity,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

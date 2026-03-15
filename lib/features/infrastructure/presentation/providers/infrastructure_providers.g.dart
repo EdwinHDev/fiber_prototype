@@ -204,7 +204,7 @@ final class InfrastructureMapDataProvider
 }
 
 String _$infrastructureMapDataHash() =>
-    r'54fdacff1f990df6ebe565630be97369dcc7eb6c';
+    r'96ceca86fd316e2964105bdcd935e5060f190248';
 
 /// AsyncNotifier for infrastructure map data.
 /// Provides reactive GeoJSON FeatureCollection for MapLibre rendering.
