@@ -117,20 +117,24 @@ class InfrastructureDao extends DatabaseAccessor<AppDatabase>
 
   /// Safely deletes a point only if it has no associated lines or complements.
   /// Throws an exception if the point is still referenced.
+  /// Uses COUNT() aggregation for optimal performance.
   Future<void> deletePointSafe(String pointId) async {
     await transaction(() async {
-      // Check for associated line routes
+      // Check for associated line routes using COUNT() aggregation
       final lineRoutesCount =
-          await (select(lineRoutes)..where((lr) => lr.pointId.equals(pointId)))
-              .get()
-              .then((rows) => rows.length);
+          await (selectOnly(lineRoutes)
+                ..addColumns([lineRoutes.lineId.count()])
+                ..where(lineRoutes.pointId.equals(pointId)))
+              .getSingle()
+              .then((row) => row.read(lineRoutes.lineId.count()) ?? 0);
 
-      // Check for associated complements
+      // Check for associated complements using COUNT() aggregation
       final pointComplementsCount =
-          await (select(pointComplements)
-                ..where((pc) => pc.pointId.equals(pointId)))
-              .get()
-              .then((rows) => rows.length);
+          await (selectOnly(pointComplements)
+                ..addColumns([pointComplements.pointId.count()])
+                ..where(pointComplements.pointId.equals(pointId)))
+              .getSingle()
+              .then((row) => row.read(pointComplements.pointId.count()) ?? 0);
 
       if (lineRoutesCount > 0 || pointComplementsCount > 0) {
         throw Exception(
