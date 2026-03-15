@@ -1,6 +1,7 @@
 import '../../domain/repositories/i_infrastructure_repository.dart';
 import '../local/app_database.dart';
 import '../local/daos/infrastructure_dao.dart';
+import '../local/models/composite_models.dart';
 import '../mappers/geojson_mappers.dart';
 
 /// Implementation of the infrastructure repository.
@@ -12,38 +13,26 @@ class InfrastructureRepositoryImpl implements IInfrastructureRepository {
 
   @override
   Future<Map<String, dynamic>> getInfrastructureGeoJson() async {
-    // Fetch all points and lines in parallel for optimal performance
+    // Fetch all data in parallel using bulk methods (solves N+1 problem)
     final results = await Future.wait([
-      _dao.getAllPoints(),
-      _dao.getAllLines(),
+      _dao.getAllPointsWithComplements(),
+      _dao.getAllLinesWithRoutes(),
     ]);
 
-    final points = results[0] as List<PointEntity>;
-    final lines = results[1] as List<LineEntity>;
+    final pointsWithComplements = results[0] as List<PointWithComplements>;
+    final linesWithRoutes = results[1] as List<LineWithRoute>;
 
-    // Transform points to PointWithComplements and convert to GeoJSON
-    final pointFeatures = await Future.wait(
-      points.map((point) async {
-        final pointDetails = await _dao.getPointDetails(point.id);
-        if (pointDetails == null) return null;
-        return pointDetails.toGeoJson();
-      }),
-    );
+    // Convert to GeoJSON synchronously (data already in memory)
+    final pointFeatures = pointsWithComplements
+        .map((pointWithComplements) => pointWithComplements.toGeoJson())
+        .toList();
 
-    // Transform lines to LineWithRoute and convert to GeoJSON
-    final lineFeatures = await Future.wait(
-      lines.map((line) async {
-        final lineDetails = await _dao.getLineDetails(line.id);
-        if (lineDetails == null) return null;
-        return lineDetails.toGeoJson();
-      }),
-    );
+    final lineFeatures = linesWithRoutes
+        .map((lineWithRoute) => lineWithRoute.toGeoJson())
+        .toList();
 
-    // Filter out null values and combine all features
-    final allFeatures = [
-      ...pointFeatures.whereType<Map<String, dynamic>>(),
-      ...lineFeatures.whereType<Map<String, dynamic>>(),
-    ];
+    // Combine all features
+    final allFeatures = [...pointFeatures, ...lineFeatures];
 
     // Return RFC 7946 compliant FeatureCollection
     return {'type': 'FeatureCollection', 'features': allFeatures};

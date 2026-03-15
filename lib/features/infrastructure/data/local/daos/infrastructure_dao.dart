@@ -156,4 +156,69 @@ class InfrastructureDao extends DatabaseAccessor<AppDatabase>
   /// Retrieves all complements.
   Future<List<ComplementEntity>> getAllComplements() =>
       select(complements).get();
+
+  /// Retrieves all points with their complements in a single query.
+  /// Solves N+1 problem by using JOIN and in-memory grouping.
+  Future<List<PointWithComplements>> getAllPointsWithComplements() async {
+    final query = select(points).join([
+      leftOuterJoin(
+        pointComplements,
+        pointComplements.pointId.equalsExp(points.id),
+      ),
+      leftOuterJoin(
+        complements,
+        complements.id.equalsExp(pointComplements.complementId),
+      ),
+    ]);
+
+    final results = await query.get();
+
+    // Group results in memory by point ID
+    final Map<String, PointWithComplements> pointsMap = {};
+
+    for (final row in results) {
+      final point = row.readTable(points);
+      final complement = row.readTableOrNull(complements);
+
+      if (!pointsMap.containsKey(point.id)) {
+        pointsMap[point.id] = PointWithComplements(
+          point: point,
+          complements: [],
+        );
+      }
+
+      if (complement != null) {
+        pointsMap[point.id]!.complements.add(complement);
+      }
+    }
+
+    return pointsMap.values.toList();
+  }
+
+  /// Retrieves all lines with their ordered routes in a single query.
+  /// Solves N+1 problem by using JOIN and in-memory grouping.
+  Future<List<LineWithRoute>> getAllLinesWithRoutes() async {
+    final query = select(lines).join([
+      innerJoin(lineRoutes, lineRoutes.lineId.equalsExp(lines.id)),
+      innerJoin(points, points.id.equalsExp(lineRoutes.pointId)),
+    ])..orderBy([OrderingTerm.asc(lineRoutes.order)]);
+
+    final results = await query.get();
+
+    // Group results in memory by line ID
+    final Map<String, LineWithRoute> linesMap = {};
+
+    for (final row in results) {
+      final line = row.readTable(lines);
+      final point = row.readTable(points);
+
+      if (!linesMap.containsKey(line.id)) {
+        linesMap[line.id] = LineWithRoute(line: line, orderedPoints: []);
+      }
+
+      linesMap[line.id]!.orderedPoints.add(point);
+    }
+
+    return linesMap.values.toList();
+  }
 }
