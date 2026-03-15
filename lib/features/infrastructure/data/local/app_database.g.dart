@@ -1105,7 +1105,7 @@ class $PointComplementsTable extends PointComplements
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES points (id) ON DELETE CASCADE',
+      'REFERENCES points (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _complementIdMeta = const VerificationMeta(
@@ -1350,7 +1350,7 @@ class $LineRoutesTable extends LineRoutes
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES points (id) ON DELETE CASCADE',
+      'REFERENCES points (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _orderMeta = const VerificationMeta('order');
@@ -1617,13 +1617,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
     WritePropagation(
       on: TableUpdateQuery.onTableName(
-        'points',
-        limitUpdateKind: UpdateKind.delete,
-      ),
-      result: [TableUpdate('point_complements', kind: UpdateKind.delete)],
-    ),
-    WritePropagation(
-      on: TableUpdateQuery.onTableName(
         'complements',
         limitUpdateKind: UpdateKind.delete,
       ),
@@ -1632,13 +1625,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'lines',
-        limitUpdateKind: UpdateKind.delete,
-      ),
-      result: [TableUpdate('line_routes', kind: UpdateKind.delete)],
-    ),
-    WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'points',
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('line_routes', kind: UpdateKind.delete)],

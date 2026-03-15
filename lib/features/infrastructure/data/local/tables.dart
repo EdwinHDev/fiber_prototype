@@ -53,7 +53,7 @@ class Complements extends Table {
 class PointComplements extends Table {
   TextColumn get pointId => text()
       .named('point_id')
-      .references(Points, #id, onDelete: KeyAction.cascade)();
+      .references(Points, #id, onDelete: KeyAction.restrict)();
   TextColumn get complementId => text()
       .named('complement_id')
       .references(Complements, #id, onDelete: KeyAction.cascade)();
@@ -73,7 +73,7 @@ class LineRoutes extends Table {
       .references(Lines, #id, onDelete: KeyAction.cascade)();
   TextColumn get pointId => text()
       .named('point_id')
-      .references(Points, #id, onDelete: KeyAction.cascade)();
+      .references(Points, #id, onDelete: KeyAction.restrict)();
 
   /// Sequential order of the point in the cable route (1, 2, 3, ...).
   /// CRITICAL: This value determines the LineString geometry in GeoJSON.
