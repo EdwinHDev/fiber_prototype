@@ -302,13 +302,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
 
         // Capa de los Postes (renderizado con iconos)
-        await controller.addSymbolLayer(
+        await controller.addCircleLayer(
           'infrastructure-source',
           'points-layer',
-          const SymbolLayerProperties(
-            iconImage: 'custom-marker',
-            iconSize: 1.5,
-            iconAllowOverlap: true,
+          const CircleLayerProperties(
+            circleRadius: 6.0, // Un poco más grande para mejor visibilidad
+            // EXPRESIÓN DINÁMICA: "Obtén el color de las propiedades, si no existe usa Azul"
+            circleColor: [
+              'coalesce',
+              ['get', 'color'],
+              '#0000FF',
+            ],
+            circleStrokeWidth: 2.0,
+            circleStrokeColor:
+                '#FFFFFF', // Borde blanco para que resalte sobre vías oscuras
           ),
           filter: [
             '==',
