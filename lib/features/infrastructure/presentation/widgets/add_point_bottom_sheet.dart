@@ -175,10 +175,12 @@ class _AddPointBottomSheetState extends ConsumerState<AddPointBottomSheet> {
           ),
           items:
               [
+                    {'name': 'Azul', 'hex': '#0000FF'},
                     {'name': 'Gris', 'hex': '#808080'},
                     {'name': 'Negro', 'hex': '#000000'},
                     {'name': 'Rojo', 'hex': '#FF0000'},
-                    {'name': 'Azul', 'hex': '#0000FF'},
+                    {'name': 'Verde', 'hex': '#008000'},
+                    {'name': 'Naranja', 'hex': '#FFA500'},
                   ]
                   .map(
                     (color) => DropdownMenuItem(

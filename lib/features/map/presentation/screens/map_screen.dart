@@ -40,96 +40,107 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            MapLibreMap(
-              // 1. Tile hiper-limpio de alto contraste (Carto Positron)
-              styleString:
-                  'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-
-              // 2. Bloquear rotación accidental al hacer zoom
-              rotateGesturesEnabled: false,
-
-              // 3. Ocultar la brújula (ya que siempre mirará al Norte)
-              compassEnabled: false,
-
-              // Configuraciones base
-              initialCameraPosition: const CameraPosition(
-                target: LatLng(7.0, -65.0),
-                zoom: 5.0,
+            // 1. Mapa en tamaño completo (NUNCA cambia de tamaño)
+            Positioned.fill(
+              child: MapLibreMap(
+                styleString:
+                    'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+                rotateGesturesEnabled: false,
+                compassEnabled: false,
+                initialCameraPosition: const CameraPosition(
+                  target: LatLng(7.0, -65.0),
+                  zoom: 5.0,
+                ),
+                onMapCreated: _onMapCreated,
+                onStyleLoadedCallback: _onStyleLoaded,
               ),
-              onMapCreated: _onMapCreated,
-              onStyleLoadedCallback: _onStyleLoaded,
             ),
+
+            // 2. Indicador de carga
             if (infrastructureData.isLoading)
               const Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.cyan),
                 ),
               ),
+
+            // 3. Mira central (solo en modo selección)
             if (_isSelectingLocation)
               IgnorePointer(
                 child: Center(
                   child: Icon(
-                    Icons.location_searching,
+                    Icons.filter_center_focus_outlined,
                     size: 48,
                     color: Colors.red.shade700,
                     shadows: const [Shadow(blurRadius: 4, color: Colors.white)],
                   ),
                 ),
               ),
+
+            // 4. Barra inferior de confirmación (solo en modo selección)
+            if (_isSelectingLocation)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _cancelLocationSelection,
+                          icon: const Icon(Icons.close),
+                          label: const Text('Cancelar'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _confirmLocationSelection,
+                          icon: const Icon(Icons.check),
+                          label: const Text('Confirmar Ubicación'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // 5. FAB de agregar (solo en modo normal)
+            if (!_isSelectingLocation)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: FloatingActionButton(
+                  onPressed: _showAddMenu,
+                  backgroundColor: Colors.cyan,
+                  child: const Icon(Icons.add),
+                ),
+              ),
           ],
         ),
       ),
-      floatingActionButton: !_isSelectingLocation
-          ? FloatingActionButton(
-              onPressed: _showAddMenu,
-              backgroundColor: Colors.cyan,
-              child: const Icon(Icons.add),
-            )
-          : null,
-      bottomNavigationBar: _isSelectingLocation
-          ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _cancelLocationSelection,
-                      icon: const Icon(Icons.close),
-                      label: const Text('Cancelar'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _confirmLocationSelection,
-                      icon: const Icon(Icons.check),
-                      label: const Text('Confirmar Ubicación'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : null,
     );
   }
 
@@ -292,36 +303,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           'lines-layer',
           const LineLayerProperties(
             lineWidth: 3.0,
-            lineColor: ['get', 'colorHex'], // Sintaxis correcta MapLibre
+            lineColor: ['get', 'colorHex'],
           ),
-          filter: [
-            '==',
-            ['geometry-type'],
-            'LineString',
-          ], // Sintaxis moderna
+          filter: ['==', r'$type', 'LineString'],
         );
 
-        // Capa de los Postes (renderizado con iconos)
+        // Capa de los Postes
         await controller.addCircleLayer(
           'infrastructure-source',
           'points-layer',
           const CircleLayerProperties(
-            circleRadius: 6.0, // Un poco más grande para mejor visibilidad
-            // EXPRESIÓN DINÁMICA: "Obtén el color de las propiedades, si no existe usa Azul"
-            circleColor: [
-              'coalesce',
-              ['get', 'color'],
-              '#0000FF',
-            ],
+            circleRadius: 6.0,
+            circleColor: ['get', 'color'],
             circleStrokeWidth: 2.0,
-            circleStrokeColor:
-                '#FFFFFF', // Borde blanco para que resalte sobre vías oscuras
+            circleStrokeColor: '#FFFFFF',
           ),
-          filter: [
-            '==',
-            ['geometry-type'],
-            'Point',
-          ],
+          filter: ['==', r'$type', 'Point'],
         );
 
         _isSourceAdded = true;
